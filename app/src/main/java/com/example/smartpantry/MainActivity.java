@@ -1,5 +1,7 @@
 package com.example.smartpantry;
 
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import android.app.AlertDialog;
 import android.content.ContentValues;
 import android.content.Context;
