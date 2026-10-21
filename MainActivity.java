@@ -1,5 +1,7 @@
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.LinearLayoutManager;
 package com.example.smartpantry;
-
 import android.app.AlertDialog;
 import android.content.ContentValues;
 import android.content.Context;
