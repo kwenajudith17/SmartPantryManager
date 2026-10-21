@@ -77,30 +77,87 @@ public class MainActivity extends AppCompatActivity {
         else if (screen.equals("All Recipes")) showRecipes();
         else showSettings();
     }
+    
+private void showPantry() {
+    content.addView(label("My Pantry", 21, true));
+    content.addView(label(
+        "Add ingredients you have at home. Quantities are checked against recipe requirements.",
+        14, false
+    ));
 
-    private void showPantry() {
-        content.addView(label("My Pantry", 21, true));
-        content.addView(label("Add ingredients you have at home. Quantities are checked against recipe requirements.", 14, false));
-        content.addView(actionButton("+ Add pantry item", () -> itemDialog(null, "", "", "pcs", "")));
-        Cursor c = db.getReadableDatabase().rawQuery("SELECT id,name,quantity,unit,expiry FROM pantry ORDER BY name", null);
-        if (!c.moveToFirst()) content.addView(label("Your pantry is empty. Add ingredients to start getting recipe suggestions.", 16, false));
-        else do {
-            int id = c.getInt(0); String name = c.getString(1); double quantity = c.getDouble(2);
-            String unit = c.getString(3); String expiry = c.getString(4);
-            LinearLayout box = card(); box.addView(label(name, 18, true));
-            box.addView(label("Quantity: " + fmt(quantity) + " " + unit + ((expiry == null || expiry.isEmpty()) ? "" : "\nExpiry: " + expiry), 14, false));
-            LinearLayout buttons = new LinearLayout(this);
-            buttons.addView(actionButton("Edit", () -> itemDialog(id, name, fmt(quantity), unit, expiry == null ? "" : expiry)));
-            buttons.addView(actionButton("Delete", () -> new AlertDialog.Builder(this).setTitle("Delete " + name + "?")
-                .setNegativeButton("Cancel", null).setPositiveButton("Delete", (d, w) -> {
-                    db.getWritableDatabase().delete("pantry", "id=?", new String[]{String.valueOf(id)}); showScreen("Pantry");
-                }).show()));
-            box.addView(buttons); content.addView(box);
-        } while (c.moveToNext());
-        c.close();
+    content.addView(actionButton("+ Add pantry item",
+        () -> itemDialog(null, "", "", "pcs", "")
+    ));
+
+    List<PantryAdapter.PantryItem> items = new ArrayList<>();
+
+    Cursor c = db.getReadableDatabase().rawQuery(
+        "SELECT id, name, quantity, unit, expiry FROM pantry ORDER BY name",
+        null
+    );
+
+    while (c.moveToNext()) {
+        items.add(new PantryAdapter.PantryItem(
+            c.getInt(0),
+            c.getString(1),
+            c.getDouble(2),
+            c.getString(3),
+            c.getString(4)
+        ));
+    }
+    c.close();
+
+    if (items.isEmpty()) {
+        content.addView(label(
+            "Your pantry is empty. Add ingredients to start getting recipe suggestions.",
+            16, false
+        ));
     }
 
-    private EditText field(String hint, String value, boolean number) {
+    RecyclerView recycler = new RecyclerView(this);
+    recycler.setLayoutManager(new LinearLayoutManager(this));
+    recycler.setNestedScrollingEnabled(false);
+
+    PantryAdapter adapter = new PantryAdapter(
+        this,
+        items,
+        new PantryAdapter.OnPantryActionListener() {
+            @Override
+            public void onEdit(PantryAdapter.PantryItem item) {
+                itemDialog(
+                    item.id,
+                    item.name,
+                    fmt(item.quantity),
+                    item.unit,
+                    item.expiry == null ? "" : item.expiry
+                );
+            }
+
+            @Override
+            public void onDelete(PantryAdapter.PantryItem item) {
+                new AlertDialog.Builder(MainActivity.this)
+                    .setTitle("Delete " + item.name + "?")
+                    .setNegativeButton("Cancel", null)
+                    .setPositiveButton("Delete", (dialog, which) -> {
+                        db.getWritableDatabase().delete(
+                            "pantry",
+                            "id=?",
+                            new String[]{String.valueOf(item.id)}
+                        );
+                        showScreen("Pantry");
+                    })
+                    .show();
+            }
+        }
+    );
+
+    recycler.setAdapter(adapter);
+    content.addView(recycler,
+        new LinearLayout.LayoutParams(-1, -2));
+}
+
+
+   private EditText field(String hint, String value, boolean number) {
         EditText e = new EditText(this); e.setSingleLine(true); e.setHint(hint);
         if (value != null) e.setText(value); if (number) e.setInputType(8194); return e;
     }
